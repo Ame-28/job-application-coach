@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth, UserButton, Protect } from "@clerk/nextjs";
+import { useAuth, UserButton, useUser } from "@clerk/nextjs";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import ReactMarkdown from "react-markdown";
 
@@ -293,6 +293,8 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(false);
 
   const { getToken } = useAuth();
+  const { user } = useUser();
+  const isPremium = user?.publicMetadata?.premium === true;
 
   const canSubmit =
     jobTitle.trim() !== "" &&
@@ -379,21 +381,18 @@ export default function ProductPage() {
         <UserButton showName={true} />
       </header>
 
-      <Protect
-        plan="premium_subscription"
-        fallback={
-          <div style={styles.paywall}>
-            <div style={styles.paywallIcon}>🔒</div>
-            <h2 style={styles.paywallTitle}>Upgrade to Premium</h2>
-            <p style={styles.paywallText}>
-              Get unlimited access to AI‑powered resume tailoring, cover letter
-              drafts, and interview preparation — all personalized to every job
-              you apply for.
-            </p>
-            {/* <PricingTable /> */}
-          </div>
-        }
-      >
+      {!isPremium ? (
+        <div style={styles.paywall}>
+          <div style={styles.paywallIcon}>🔒</div>
+          <h2 style={styles.paywallTitle}>Upgrade to Premium</h2>
+          <p style={styles.paywallText}>
+            Get unlimited access to AI‑powered resume tailoring, cover letter
+            drafts, and interview preparation — all personalized to every job
+            you apply for.
+          </p>
+        </div>
+      ) : (
+        <>
         {/* ── hero strip ──────────────────────── */}
         <section style={styles.hero}>
           <span style={styles.heroTag}>AI‑Powered</span>
@@ -556,7 +555,8 @@ export default function ProductPage() {
             </div>
           )}
         </div>
-      </Protect>
+        </>
+      )}
     </div>
   );
 }

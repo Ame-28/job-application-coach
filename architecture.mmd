@@ -1,0 +1,63 @@
+flowchart TB
+    User["User Browser<br/>(HTTPS)"]
+
+    subgraph CDN["Edge / CDN"]
+        CF["CloudFront<br/>SSL termination<br/>403/404 to /index.html"]
+    end
+
+    subgraph Frontend["Static Frontend"]
+        S3["S3 Bucket<br/>Next.js static export"]
+    end
+
+    subgraph API["API Layer"]
+        APIGW["API Gateway (HTTP API)<br/>POST /api - GET /health<br/>CORS configured"]
+        Lambda["AWS Lambda (Python 3.12)<br/>FastAPI + Mangum<br/>30s - 512 MB"]
+    end
+
+    subgraph AWSsvc["AWS Services"]
+        Bedrock["Amazon Bedrock<br/>Nova 2 Lite"]
+        Secrets["Secrets Manager<br/>CORS_ORIGINS,<br/>runtime config"]
+        Dynamo["DynamoDB<br/>Conversation memory<br/>30-day TTL"]
+    end
+
+    subgraph Auth["Authentication"]
+        Clerk["Clerk<br/>JWT issued client-side<br/>verified server-side (JWKS)"]
+    end
+
+    subgraph CICD["Deployment Pipeline"]
+        GH["GitHub (main)"]
+        GHA["GitHub Actions<br/>OIDC to IAM role"]
+        TF["Terraform apply<br/>Lambda - API GW - S3 -<br/>CloudFront - DynamoDB"]
+        Build["npm run build<br/>aws s3 sync out/<br/>CloudFront invalidation"]
+    end
+
+    User -->|HTTPS| CF
+    CF -->|HTTP| S3
+    CF -->|HTTPS| APIGW
+    APIGW -->|AWS_PROXY| Lambda
+    Lambda -->|AWS SDK| Bedrock
+    Lambda -->|AWS SDK| Secrets
+    Lambda -->|AWS SDK| Dynamo
+
+    User -.->|Sign-in| Clerk
+    Lambda -.->|Verify JWT via JWKS| Clerk
+
+    GH -->|push| GHA
+    GHA --> TF
+    GHA --> Build
+    TF --> Lambda
+    TF --> APIGW
+    TF --> S3
+    TF --> CF
+    TF --> Dynamo
+    Build --> S3
+    Build --> CF
+
+    classDef aws fill:#ff9900,stroke:#232f3e,color:#111
+    classDef edge fill:#4a90e2,stroke:#1a3d66,color:#fff
+    classDef auth fill:#6366f1,stroke:#3730a3,color:#fff
+    classDef ci fill:#22c55e,stroke:#14532d,color:#fff
+    class Bedrock,Secrets,Dynamo,Lambda,APIGW,S3 aws
+    class CF edge
+    class Clerk auth
+    class GH,GHA,TF,Build ci
