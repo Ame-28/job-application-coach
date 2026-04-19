@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useAuth, UserButton, useUser } from "@clerk/nextjs";
-import { fetchEventSource } from "@microsoft/fetch-event-source";
 import ReactMarkdown from "react-markdown";
 
 /* ───────────────────────── styles ───────────────────────── */
@@ -310,39 +309,33 @@ export default function ProductPage() {
     setOutput("");
     const token = await getToken();
 
-    await fetchEventSource(
-      `${process.env.NEXT_PUBLIC_API_URL || ""}/api`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          job_title: jobTitle,
-          company_name: companyName,
-          job_description: jobDescription,
-          resume_text: resumeText,
-          years_experience: yearsExperience,
-          target_industry: targetIndustry,
-          email_address: emailAddress,
-        }),
-        onmessage(ev) {
-          if (ev.data) {
-            setOutput((prev) => prev + ev.data);
-          } else {
-            setOutput((prev) => prev + "\n");
-          }
-        },
-        onerror(err) {
-          console.error("SSE error:", err);
-          setLoading(false);
-        },
-        onclose() {
-          setLoading(false);
-        },
-      }
-    );
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || ""}/api`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            job_title: jobTitle,
+            company_name: companyName,
+            job_description: jobDescription,
+            resume_text: resumeText,
+            years_experience: parseInt(String(yearsExperience)) || 0,
+            target_industry: targetIndustry,
+          }),
+        }
+      );
+      const data = await response.json();
+      setOutput(data.response ?? JSON.stringify(data));
+    } catch (error) {
+      console.error("Error:", error);
+      setOutput("An error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* ─────────── render ─────────── */
