@@ -43,3 +43,31 @@ next-env.d.ts
 .vercel
 .env.local
 .vercel
+
+# Environment
+.env
+.env.local
+
+# Node
+node_modules/
+out/
+.next/
+
+# Python
+__pycache__/
+*.pyc
+package/
+
+# Terraform
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate*
+crash.log
+
+# Lambda
+infra/lambda.zip
+lambda_function.zip
+
+# Vercel
+.vercel/
