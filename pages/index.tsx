@@ -560,7 +560,7 @@ export default function LandingPage() {
         <div style={s.heroBg} />
         <span style={s.heroTag}>AI‑Powered Career Coaching</span>
         <h1 style={s.heroTitle}>
-          Land Your Dream Job{" "}
+          Turn Job Listings Into Interviews{" "}
           <span style={s.heroGradientWord}>In Minutes, Not Hours</span>
         </h1>
         <p style={s.heroSub}>
