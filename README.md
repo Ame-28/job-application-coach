@@ -7,7 +7,7 @@ An AI-powered SaaS that turns a job description and a candidate's resume into ta
 ![Product page ](docs/ProductPage.png)
 ![Product page with generated output](docs/ProductPage_WithResult.png)
 
-> Replace `docs/screenshot.png` with your actual screenshot once captured.
+
 
 ## Live Demo
 
