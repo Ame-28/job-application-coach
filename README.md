@@ -13,7 +13,7 @@ An AI-powered SaaS that turns a job description and a candidate's resume into ta
 
 **https://d2r5urwl6zhsfw.cloudfront.net/**
 
-> Replace with your CloudFront distribution URL after deployment.
+
 
 ## Technology Stack
 
