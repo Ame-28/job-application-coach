@@ -1,0 +1,75 @@
+name: Deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, prod]
+        default: dev
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.DEFAULT_AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Package Lambda
+        run: |
+          mkdir -p infra
+          mkdir package
+          pip install -r requirements.txt -t ./package --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.12 --implementation cp --quiet
+          pip install pydantic -t ./package --platform manylinux_2_17_x86_64 --only-binary=:all: --python-version 3.12 --implementation cp --quiet
+          pip install fastapi-clerk-auth -t ./package --no-deps --quiet
+          cp *.py package/
+          cd package && zip -r ../infra/lambda.zip . --quiet && cd ..
+          rm -rf package
+
+      - name: Apply Terraform
+        working-directory: infra
+        run: |
+          terraform init
+          terraform workspace select dev || terraform workspace new dev
+          terraform apply -auto-approve
+
+      - name: Build and Deploy Frontend
+        run: |
+          API_URL=$(cd infra && terraform output -raw api_gateway_url)
+          BUCKET=$(cd infra && terraform output -raw frontend_bucket)
+          CF_DOMAIN=$(cd infra && terraform output -raw cloudfront_domain)
+          npm ci
+          NEXT_PUBLIC_API_URL=$API_URL NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }} npm run build
+          aws s3 sync out/ s3://$BUCKET/ --delete
+          CF_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?DomainName=='$CF_DOMAIN'].Id" --output text)
+          aws cloudfront create-invalidation --distribution-id $CF_ID --paths "/*"
+
+      - name: Deployment Summary
+        working-directory: infra
+        run: |
+          echo "Deployment complete!"
+          echo "CloudFront: https://$(terraform output -raw cloudfront_domain)"
+          echo "API Gateway: $(terraform output -raw api_gateway_url)"
